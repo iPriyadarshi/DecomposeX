@@ -3,8 +3,6 @@
 An interactive guide to LDU matrix factorization. It teaches the theory, derives the algorithm, and
 factors matrices **exactly**, using arbitrary-precision fractions instead of floating point.
 
-**Live demo: [decomposex.priyadarshi.top](https://decomposex.priyadarshi.top)**
-
 ## Key features
 
 - **Exact arithmetic.** Every value is a fraction of arbitrary-precision integers, so a pivot that is
@@ -40,7 +38,7 @@ xdg-open index.html     # Linux
 ## Project structure
 
 ```
-*.html            one file per page, plus a 404 page
+*.html            one file per page
 css/main.css      design system: tokens, components, light and dark themes
 js/fraction.js    exact rational arithmetic on BigInt
 js/matrix.js      matrix algebra, determinant, rank, parsing
