@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculator | DecomposeX</title>
+  <meta name="description"
+    content="Factor any square matrix into L, D and U exactly. Step-by-step elimination, row permutations, verification, determinant, rank and system solving.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="calculator">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <header class="section-head" style="margin-bottom:28px">
+        <div class="eyebrow">Calculator</div>
+        <h1 style="font-size:clamp(1.7rem,1.1rem+1.8vw,2.4rem)">Factor a matrix into L · D · U</h1>
+        <p class="lead" style="max-width:70ch">
+          Enter integers, decimals or fractions such as <code>3</code>, <code>-1.5</code> or <code>2/7</code>.
+          Everything is computed in exact rational arithmetic, so the result is never a rounded approximation.
+        </p>
+      </header>
+
+      <div class="calc-layout">
+
+        <!-- ============ Input column ============ -->
+        <div class="calc-side">
+
+          <section class="card" aria-labelledby="input-h">
+            <div class="card-head">
+              <span class="card-ico" data-icon="matrix"></span>
+              <h2 id="input-h" style="font-size:1.1rem">Matrix A</h2>
+            </div>
+
+            <div class="row" style="margin-bottom:16px">
+              <label class="label" for="size-input" style="margin:0">Size n ×n</label>
+              <div class="stepper">
+                <button type="button" id="size-dec" aria-label="Decrease matrix size">−</button>
+                <input id="size-input" type="number" min="1" max="10" value="3" inputmode="numeric"
+                  aria-label="Matrix size">
+                <button type="button" id="size-inc" aria-label="Increase matrix size">+</button>
+              </div>
+              <span class="spacer"></span>
+              <span class="hint" id="size-hint">1 to 10</span>
+            </div>
+
+            <div id="grid-host" class="mx-scroll"></div>
+            <p class="hint" style="margin-top:10px">
+              Arrow keys move between cells · <kbd>Enter</kbd> factorizes · paste a whole matrix into any cell
+            </p>
+
+            <div id="grid-error" class="alert alert-err hidden" style="margin-top:14px" role="alert"></div>
+
+            <div class="divider-label" style="margin-top:20px"><span>Fill</span></div>
+            <div class="preset-grid" id="fill-host"></div>
+
+            <div class="divider-label" style="margin-top:20px"><span>Paste or share</span></div>
+            <div class="row">
+              <button class="btn btn-ghost btn-sm" id="paste-toggle" type="button">Paste a matrix</button>
+              <button class="btn btn-ghost btn-sm" id="link-copy" type="button">Copy link to this matrix</button>
+            </div>
+            <div id="paste-panel" class="hidden" style="margin-top:12px">
+              <label class="label" for="paste-area">Rows on separate lines, entries separated by spaces or commas</label>
+              <textarea class="textarea" id="paste-area" rows="4" spellcheck="false"
+placeholder="2  1  1
+4 -6  0
+-2  7  2"></textarea>
+              <div class="row" style="margin-top:10px">
+                <button class="btn btn-sm" id="paste-apply" type="button">Load it</button>
+                <button class="btn btn-ghost btn-sm" id="paste-cancel" type="button">Cancel</button>
+              </div>
+              <p class="hint" style="margin-top:8px">
+                Brackets are ignored, so <code>[[1,2],[3,4]]</code> works too.
+              </p>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="opt-h">
+            <div class="card-head">
+              <span class="card-ico" data-icon="eye"></span>
+              <h2 id="opt-h" style="font-size:1.1rem">Display &amp; method</h2>
+            </div>
+
+            <div class="field" style="margin-bottom:16px">
+              <span class="label">Show numbers as</span>
+              <div class="row">
+                <div class="btn-group" role="group" aria-label="Number format">
+                  <button type="button" id="mode-frac" aria-pressed="true">Fractions</button>
+                  <button type="button" id="mode-dec" aria-pressed="false">Decimals</button>
+                </div>
+                <span id="places-wrap" class="row hidden" style="gap:8px">
+                  <label class="label" for="places-input" style="margin:0">places</label>
+                  <div class="stepper">
+                    <button type="button" id="places-dec" aria-label="Fewer decimal places">−</button>
+                    <input id="places-input" type="number" min="1" max="12" value="4" aria-label="Decimal places">
+                    <button type="button" id="places-inc" aria-label="More decimal places">+</button>
+                  </div>
+                </span>
+              </div>
+              <span class="hint" id="places-hint">
+                Fractions are exact. Decimals are truncated, and a trailing … marks digits that continue.
+              </span>
+            </div>
+
+            <div class="field" style="margin-bottom:16px">
+              <label class="label" for="pivot-select">Pivoting strategy</label>
+              <select class="select" id="pivot-select">
+                <option value="when-zero" selected>Swap rows only when forced (default)</option>
+                <option value="never">Never swap (textbook A = LDU only)</option>
+                <option value="largest">Always pick the largest pivot (partial pivoting)</option>
+              </select>
+              <span class="hint" id="pivot-hint"></span>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="solve-toggle">
+              <span class="switch-track"></span>
+              <span>Also solve A·x = b</span>
+            </label>
+            <div id="b-panel" class="hidden" style="margin-top:12px">
+              <span class="label">Right-hand side b</span>
+              <div id="b-host" class="mx-scroll" style="margin-top:6px"></div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="ex-h">
+            <div class="card-head">
+              <span class="card-ico" data-icon="book"></span>
+              <h2 id="ex-h" style="font-size:1.1rem">Load an example</h2>
+            </div>
+            <div class="field">
+              <label class="sr-only" for="example-select">Choose an example matrix</label>
+              <select class="select" id="example-select"></select>
+            </div>
+            <p class="hint" id="example-note" style="margin-top:10px"></p>
+            <a class="btn btn-ghost btn-sm" href="examples.html" style="margin-top:12px">All examples, explained →</a>
+          </section>
+
+        </div>
+
+        <!-- ============ Results column ============ -->
+        <div id="results-col">
+          <div id="status-host"></div>
+
+          <div id="results-shell" class="hidden">
+            <div class="tabs" role="tablist" aria-label="Result sections" id="tabs-host"></div>
+            <div id="panels-host" style="margin-top:24px"></div>
+          </div>
+
+          <div id="empty-state" class="results-empty">
+            <span data-icon="calc"></span>
+            <div>
+              <h3>Nothing to factor yet</h3>
+              <p class="text-sm" style="max-width:44ch;margin-top:6px">
+                Fill in the matrix on the left, or load an example, and the factorization appears here.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="pagenav-host"></div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/calculator.js"></script>
+</body>
+
+</html>

@@ -2,25 +2,181 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LDU Factorization</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DecomposeX | Learn LDU Factorization</title>
+  <meta name="description"
+    content="A complete guide to LDU factorization: the theory, the algorithm, worked examples and an exact step-by-step calculator that never rounds.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Apply the saved theme before the first paint to avoid a flash. */
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 
-<body>
-    <div class="container">
-        <h1>LDU Factorization of an n*n Matrix</h1>
-        <div>
-            <label for="matrixSize">Matrix Size (n): </label>
-            <input type="number" id="matrixSize" value="3" min="1">
-            <button onclick="generateMatrix()">Generate Matrix</button>
+<body data-page="home">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <!-- ---------- Hero ---------- -->
+      <section class="hero">
+        <span class="badge badge-brand badge-dot">Exact arithmetic · no rounding anywhere</span>
+        <h1 style="margin-top:20px">Understand <span class="grad">LDU factorization</span> from the ground up</h1>
+        <p class="lead">
+          Every square matrix that can be reduced without a zero pivot splits into three simple pieces:
+          a unit lower triangle, a diagonal, and a unit upper triangle. This site teaches the theorem,
+          derives the algorithm, and factors your matrices exactly, showing every step.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-lg" href="theory.html">Start learning</a>
+          <a class="btn btn-lg btn-ghost" href="calculator.html">Open the calculator</a>
         </div>
-        <div id="matrixInput"></div>
-        <button onclick="factorizeLDU()">Factorize</button>
-        <div id="output"></div>
+      </section>
+
+      <!-- ---------- Live example ---------- -->
+      <section class="section" data-reveal>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-ico" id="demo-ico"></span>
+            <div>
+              <h2 style="font-size:1.25rem">The idea, in one picture</h2>
+              <p class="text-sm" style="margin:0">Computed live on this page: not an image.</p>
+            </div>
+            <span class="spacer"></span>
+            <span class="badge badge-ok badge-dot" id="demo-verified">verified exactly</span>
+          </div>
+          <div id="demo-equation"></div>
+          <p class="text-sm" style="margin-top:16px" id="demo-note"></p>
+        </div>
+      </section>
+
+      <!-- ---------- Learning path ---------- -->
+      <section class="section" data-reveal>
+        <div class="section-head">
+          <div class="eyebrow">A guided route</div>
+          <h2>From first definition to solving real systems</h2>
+          <p>Work through it in order, or jump straight to whatever you need. Each page ends with a link to the next.</p>
+        </div>
+        <div class="path" id="path-host"></div>
+      </section>
+
+      <!-- ---------- Why exact ---------- -->
+      <section class="section" data-reveal>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-ico" id="exact-ico"></span>
+              <h2 style="font-size:1.2rem">Why this calculator uses fractions</h2>
+            </div>
+            <p>
+              Ordinary computer arithmetic cannot represent most decimals. The classic demonstration
+              is that a tenth plus a fifth is not three tenths:
+            </p>
+            <pre class="block" style="margin-top:14px">&gt; 0.1 + 0.2 === 0.3
+<span class="cm">false</span>
+&gt; 0.1 + 0.2
+<span class="cm">0.30000000000000004</span></pre>
+            <p style="margin-top:14px">
+              In a factorization those errors compound. A pivot that is mathematically
+              <strong>zero</strong> comes out as <code>4.9e-17</code>, so a test for
+              &ldquo;is this pivot zero?&rdquo; silently fails, and the algorithm divides by
+              near-nothing and returns garbage dressed up to two decimal places.
+            </p>
+            <p>
+              DecomposeX stores every number as an exact ratio of arbitrary-precision integers.
+              A zero pivot is <em>exactly</em> zero and gets handled properly, and
+              <span class="mono">1/3</span> stays <span class="mono">1/3</span>.
+            </p>
+            <div class="row" style="margin-top:18px">
+              <a class="btn btn-soft btn-sm" href="about.html#exactness">How it works</a>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-ico" id="cases-ico"></span>
+              <h2 style="font-size:1.2rem">Every case handled, not just the easy one</h2>
+            </div>
+            <p>Most LDU demos assume the elimination simply works. These are the cases that break them:</p>
+            <div class="table-wrap" style="margin-top:14px">
+              <table class="tbl">
+                <thead>
+                  <tr><th>Situation</th><th>What DecomposeX does</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>Zero pivot</strong>, non-zero below</td><td>Swaps rows and reports <span class="mono">P·A = L·D·U</span></td></tr>
+                  <tr><td><strong>Zero column</strong> below the pivot</td><td>Sets <span class="mono">d<sub>k</sub> = 0</span>, keeps going, flags the singularity</td></tr>
+                  <tr><td><strong>No factorization exists</strong></td><td>Says so, explains why, shows the LU form instead</td></tr>
+                  <tr><td><strong>Singular but factorable</strong></td><td>Factors it, and notes that U is not unique</td></tr>
+                  <tr><td><strong>Symmetric</strong></td><td>Recognises <span class="mono">U = Lᵀ</span> and the LDLᵀ form</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="row" style="margin-top:18px">
+              <a class="btn btn-soft btn-sm" href="examples.html">See all of them worked out</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Features ---------- -->
+      <section class="section" data-reveal>
+        <div class="section-head">
+          <div class="eyebrow">What you get</div>
+          <h2>Built for learning, not just answering</h2>
+        </div>
+        <div class="grid grid-3" id="features-host"></div>
+      </section>
+
+      <!-- ---------- Closing CTA ---------- -->
+      <section class="section" data-reveal>
+        <div class="card text-center" style="padding:48px 24px">
+          <h2>Ready to factor something?</h2>
+          <p class="lead" style="max-width:52ch;margin:12px auto 0">
+            Type a matrix, paste one, or load an example. You will get L, D and U, a permutation
+            if one is needed, every intermediate step, and a proof that the product really is your matrix.
+          </p>
+          <div class="hero-cta" style="margin-top:28px">
+            <a class="btn btn-lg" href="calculator.html">Open the calculator</a>
+            <a class="btn btn-lg btn-ghost" href="examples.html">Browse examples</a>
+          </div>
+        </div>
+      </section>
+
     </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/home.js"></script>
 </body>
 
 </html>

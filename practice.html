@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Practice | DecomposeX</title>
+  <meta name="description"
+    content="Practice LDU factorization with questions generated from real matrices: pivots, multipliers, determinants, rank, permutations and definiteness: each with the reasoning shown.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="practice">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap wrap-narrow">
+
+      <header class="section-head" style="margin-bottom:28px">
+        <div class="eyebrow">Practice</div>
+        <h1>Check what you have understood</h1>
+        <p class="lead">
+          Every question is generated from a fresh matrix and answered by the same code the calculator uses, so the &ldquo;correct&rdquo; answer is computed, never stored. After each one you get the reasoning
+          and the full factorization.
+        </p>
+      </header>
+
+      <!-- ---------- setup ---------- -->
+      <section class="card" id="setup-card">
+        <div class="card-head">
+          <span class="card-ico" data-icon="target"></span>
+          <h2 style="font-size:1.15rem">Start a round</h2>
+        </div>
+
+        <div class="grid grid-2" style="margin-bottom:20px">
+          <div class="field">
+            <label class="label" for="level-select">Difficulty</label>
+            <select class="select" id="level-select">
+              <option value="easy">Easy: 2×2 matrices with whole-number factors</option>
+              <option value="medium" selected>Medium: 3×3, where fractions appear</option>
+              <option value="hard">Hard: up to 4×4, with permutations and singular cases</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="count-select">Questions</label>
+            <select class="select" id="count-select">
+              <option value="5">5</option>
+              <option value="8" selected>8</option>
+              <option value="12">12</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="alert alert-info" style="margin-bottom:20px">
+          <span data-icon="lightbulb"></span>
+          <div>
+            <span class="alert-title">Before you start</span>
+            <p>
+              Keep the <a class="link" href="calculator.html" target="_blank" rel="noopener">calculator</a> open in
+              another tab if you want to work things out rather than guess; that is not cheating; it is the point.
+            </p>
+          </div>
+        </div>
+
+        <button class="btn btn-lg" id="start-btn" type="button">Start</button>
+      </section>
+
+      <!-- ---------- quiz ---------- -->
+      <section class="card hidden" id="quiz-card" aria-live="polite">
+        <div class="row row-between" style="margin-bottom:6px">
+          <span class="badge badge-brand" id="q-counter">Question 1 of 8</span>
+          <span class="badge" id="q-topic">pivots</span>
+        </div>
+        <div class="quiz-progress" id="progress-host" style="margin-bottom:24px"></div>
+
+        <div class="quiz">
+          <div id="q-matrix" class="mx-scroll"></div>
+          <p class="quiz-q" id="q-prompt"></p>
+          <div class="quiz-opts" id="q-options" role="group" aria-label="Answer choices"></div>
+          <p class="hint" id="q-hint">Press <kbd>1</kbd>–<kbd>4</kbd> to answer</p>
+          <div id="q-feedback"></div>
+        </div>
+
+        <div class="row" style="margin-top:24px">
+          <button class="btn hidden" id="next-btn" type="button">Next question</button>
+          <button class="btn btn-ghost btn-sm" id="quit-btn" type="button">End round</button>
+        </div>
+      </section>
+
+      <!-- ---------- results ---------- -->
+      <section class="card hidden" id="result-card">
+        <div class="text-center" style="padding:12px 0 20px">
+          <div class="score-ring" id="score-ring" style="margin:0 auto 20px">
+            <div id="score-text">0%</div>
+          </div>
+          <h2 id="score-title">Round complete</h2>
+          <p class="lead" id="score-blurb" style="max-width:46ch;margin:10px auto 0"></p>
+        </div>
+
+        <div id="review-host" style="margin-top:12px"></div>
+
+        <div class="row row-center" style="margin-top:28px">
+          <button class="btn" id="again-btn" type="button">Another round</button>
+          <a class="btn btn-ghost" href="theory.html">Back to the theory</a>
+        </div>
+      </section>
+
+      <div id="pagenav-host"></div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/practice.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Applications | DecomposeX</title>
+  <meta name="description"
+    content="What LDU factorization is for: solving linear systems by substitution, determinants, inverses, rank, definiteness tests and the route to Cholesky.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="applications">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <header class="section-head" style="margin-bottom:36px">
+        <div class="eyebrow">Applications</div>
+        <h1>What the factorization is good for</h1>
+        <p class="lead" style="max-width:70ch">
+          L, D and U are not the goal. They are a reusable summary of one elimination, and once you have them,
+          six different questions about the matrix become cheap.
+        </p>
+      </header>
+
+      <div class="layout-toc">
+        <article class="prose">
+
+          <!-- ================= 1 ================= -->
+          <h2 id="solving">Solving A·x = b</h2>
+          <p>
+            This is the reason the factorization exists. Substituting
+            <span class="var">A</span> = <span class="var">LDU</span> into
+            <span class="var">A</span><span class="var">x</span> = <span class="var">b</span> gives
+            <span class="mono">L(D(Ux)) = b</span>, and peeling off one factor at a time turns one hard problem
+            into three easy ones:
+          </p>
+
+          <div class="box">
+            <span class="box-label">The three passes</span>
+            <ol style="margin-top:8px">
+              <li>
+                <strong>Forward substitution.</strong> Solve <span class="mono">L·y = b</span> going downwards.
+                <span class="var">L</span> is unit lower triangular, so this needs
+                <em>no division at all</em>.
+              </li>
+              <li>
+                <strong>Diagonal scaling.</strong> Solve <span class="mono">D·z = y</span>. One division per
+                entry: <span class="mono">z<sub>k</sub> = y<sub>k</sub> / d<sub>k</sub></span>.
+              </li>
+              <li>
+                <strong>Back substitution.</strong> Solve <span class="mono">U·x = z</span> going upwards.
+                <span class="var">U</span> is unit upper triangular, so again no division.
+              </li>
+            </ol>
+          </div>
+
+          <p>
+            Every division in the whole process is concentrated in step 2, against the pivots. That is a real
+            structural advantage: the only place the computation can break is the one place you already know to
+            check.
+          </p>
+
+          <div class="box box-warn">
+            <span class="box-label">With a permutation</span>
+            <p>
+              If the factorization needed row swaps then the identity is
+              <span class="mono">P·A = L·D·U</span>, so the system to solve is
+              <span class="mono">L·D·U·x = P·b</span>. Permute the right-hand side first, using the same row
+              order. The solution <span class="var">x</span> itself is <em>not</em> permuted; only
+              <span class="var">b</span> is.
+            </p>
+          </div>
+
+          <h3 id="try-solving">Try it</h3>
+          <p>
+            Pick a system and a right-hand side. The factorization is computed once and reused for every
+            right-hand side you enter.
+          </p>
+          <div id="solver-demo"></div>
+
+          <!-- ================= 2 ================= -->
+          <h2 id="many-rhs">Many right-hand sides</h2>
+          <p>
+            The economics are what make factorization worth the trouble. Elimination costs about
+            <span class="mono">n³/3</span> operations and depends only on <span class="var">A</span>. Each
+            substitution pass costs about <span class="mono">n²/2</span>, so a complete solve after factorizing
+            costs about <span class="mono">n²</span>.
+          </p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Approach</th>
+                  <th class="num">1 system</th>
+                  <th class="num">k systems</th>
+                  <th class="num">n = 500, k = 100</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Fresh elimination each time</td>
+                  <td class="num">n³/3</td>
+                  <td class="num">k·n³/3</td>
+                  <td class="num">≈ 4.2 × 10<sup>9</sup></td>
+                </tr>
+                <tr>
+                  <td>Factor once, then substitute</td>
+                  <td class="num">n³/3 + n²</td>
+                  <td class="num">n³/3 + k·n²</td>
+                  <td class="num">≈ 6.7 × 10<sup>7</sup></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-sm text-mute">
+            Leading terms only, counting multiply&ndash;add pairs. At these sizes reusing the factorization is
+            roughly sixty times less work, and the gap widens with k.
+          </p>
+          <p>
+            This pattern is everywhere. An implicit time-stepping scheme solves against the same matrix at every
+            step. Newton's method re-solves with the same Jacobian across several iterations. A finite-element
+            model applies many load cases to one stiffness matrix. In all of them the matrix is factored once and
+            the factors are kept.
+          </p>
+
+          <!-- ================= 3 ================= -->
+          <h2 id="determinant">Determinants</h2>
+          <p>
+            Expanding a determinant by minors costs <span class="mono">O(n!)</span> operations: for
+            <span class="mono">n = 20</span> that is longer than the age of the universe on any hardware. The
+            factorization reduces it to a product:
+          </p>
+          <div class="eq">
+            det <em>A</em> = (−1)<sup><em>s</em></sup> · <em>d</em><sub>1</sub> <em>d</em><sub>2</sub> ⋯ <em>d</em><sub><em>n</em></sub>
+          </div>
+          <p>
+            where <span class="var">s</span> is the number of row swaps. It follows from taking determinants of
+            <span class="mono">PA = LDU</span>: both triangular factors have determinant 1, and
+            <span class="mono">det P = (−1)<sup>s</sup></span>. So the determinant costs
+            <span class="mono">n</span> multiplications on top of the elimination you already did: a reduction
+            from factorial to cubic.
+          </p>
+          <div id="det-demo"></div>
+
+          <!-- ================= 4 ================= -->
+          <h2 id="inverse">Inverses</h2>
+          <p>
+            The inverse is <span class="var">n</span> solves in disguise. Column <span class="var">j</span> of
+            <span class="mono">A⁻¹</span> is the solution of
+            <span class="mono">A·x = e<sub>j</sub></span>, where <span class="mono">e<sub>j</sub></span> is the
+            <span class="var">j</span>-th column of the identity. Run the three passes once per column, reusing
+            the same factorization, and assemble the results:
+          </p>
+          <div class="eq">
+            <em>A</em><sup>−1</sup> = [ <em>x</em><sub>1</sub> │ <em>x</em><sub>2</sub> │ ⋯ │ <em>x</em><sub><em>n</em></sub> ],
+            &nbsp;&nbsp; where <em>A</em> <em>x</em><sub><em>j</em></sub> = <em>e</em><sub><em>j</em></sub>.
+          </div>
+          <p>
+            Total cost <span class="mono">~n³</span>: three times the factorization, not
+            <span class="mono">n</span> times it.
+          </p>
+          <div class="box box-warn">
+            <span class="box-label">But usually, do not</span>
+            <p>
+              If your actual goal is to solve <span class="mono">Ax = b</span>, computing
+              <span class="mono">A⁻¹</span> and then multiplying is both slower and less accurate than
+              substituting directly. Forming the inverse costs about three times as much as one solve, and the
+              matrix product adds its own rounding. <span class="mono">A⁻¹b</span> is a statement about
+              mathematics; <em>solve</em> is the instruction you want in code.
+            </p>
+          </div>
+          <div id="inv-demo"></div>
+
+          <!-- ================= 5 ================= -->
+          <h2 id="rank">Rank, singularity and consistency</h2>
+          <p>
+            The pivots answer structural questions at a glance:
+          </p>
+          <ul>
+            <li>
+              <strong>Singularity.</strong> <span class="var">A</span> is invertible exactly when every
+              <span class="mono">d<sub>k</sub> ≠ 0</span>. A single zero pivot means
+              <span class="mono">det A = 0</span>.
+            </li>
+            <li>
+              <strong>Rank.</strong> The number of non-zero pivots in a fully reduced form is the rank: the
+              number of independent rows.
+            </li>
+            <li>
+              <strong>Consistency.</strong> After forward substitution, a row where
+              <span class="mono">d<sub>k</sub> = 0</span> but <span class="mono">y<sub>k</sub> ≠ 0</span> reads
+              <span class="mono">0 = y<sub>k</sub></span>: the system has no solution. If
+              <span class="mono">y<sub>k</sub> = 0</span> as well, that variable is free and there are infinitely
+              many solutions.
+            </li>
+          </ul>
+          <p>
+            The calculator reports all three, and its <em>Solve</em> tab distinguishes a unique solution from an
+            inconsistent system and from an under-determined one.
+          </p>
+          <div id="consistency-demo"></div>
+
+          <!-- ================= 6 ================= -->
+          <h2 id="definiteness">Testing definiteness</h2>
+          <p>
+            For a symmetric matrix, the signs of the pivots classify the quadratic form
+            <span class="mono">q(x) = xᵀAx</span> completely, and getting them costs one factorization rather
+            than an eigenvalue computation.
+          </p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Pivot signs</th><th>Classification</th><th>Meaning for q(x) = xᵀAx</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>all <span class="mono">&gt; 0</span></td><td><strong>Positive definite</strong></td><td>q(x) &gt; 0 for every x ≠ 0: a strict minimum</td></tr>
+                <tr><td>all <span class="mono">&lt; 0</span></td><td><strong>Negative definite</strong></td><td>q(x) &lt; 0 for every x ≠ 0: a strict maximum</td></tr>
+                <tr><td>mixed signs</td><td><strong>Indefinite</strong></td><td>q takes both signs: a saddle point</td></tr>
+                <tr><td>some zero, rest one sign</td><td><strong>Semi-definite</strong></td><td>q ≥ 0 (or ≤ 0), vanishing on a subspace</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The count of positive, negative and zero pivots is called the <strong>signature</strong> of the form,
+            and Sylvester's law of inertia guarantees it does not depend on how you got there. This is why
+            optimisation codes factor the Hessian: a positive-definite factorization confirms a descent direction,
+            and a failure mid-way tells you the step needs modifying.
+          </p>
+          <div id="definite-demo"></div>
+
+          <!-- ================= 7 ================= -->
+          <h2 id="cholesky">The route to Cholesky</h2>
+          <p>
+            For symmetric positive-definite matrices, LDLᵀ and Cholesky are the same factorization written two
+            ways. From <span class="mono">A = LDLᵀ</span> with every
+            <span class="mono">d<sub>k</sub> &gt; 0</span>, set
+            <span class="mono">R = L·D<sup>1/2</sup></span> and you have
+            <span class="mono">A = RRᵀ</span>.
+          </p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th></th><th>LDLᵀ</th><th>Cholesky</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Form</td><td><span class="mono">A = L·D·Lᵀ</span></td><td><span class="mono">A = R·Rᵀ</span></td></tr>
+                <tr><td>Square roots</td><td>none</td><td>n of them</td></tr>
+                <tr><td>Works when indefinite</td><td>yes</td><td>no: the roots go imaginary</td></tr>
+                <tr><td>Stays exact over the rationals</td><td>yes</td><td>no, since √d is usually irrational</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            That last row is why this site computes LDLᵀ exactly and shows the Cholesky factor as the one
+            decimal approximation anywhere in it. It is also why LDLᵀ is preferred in practice whenever a matrix
+            might not be positive definite: the factorization simply reports a negative pivot instead of failing.
+          </p>
+          <div id="cholesky-demo"></div>
+
+          <!-- ================= 8 ================= -->
+          <h2 id="where">Where you meet this in practice</h2>
+          <div class="grid grid-2" style="margin-top:20px">
+            <div class="card card-sm">
+              <h4>Circuit analysis</h4>
+              <p class="text-sm" style="margin-top:6px">
+                Nodal analysis produces a symmetric positive-definite conductance matrix. SPICE-style simulators
+                factor it once per operating point and substitute for each time step.
+              </p>
+            </div>
+            <div class="card card-sm">
+              <h4>Structural engineering</h4>
+              <p class="text-sm" style="margin-top:6px">
+                A finite-element stiffness matrix is symmetric and usually positive definite. One factorization
+                serves every load case, which is exactly the many-right-hand-sides pattern.
+              </p>
+            </div>
+            <div class="card card-sm">
+              <h4>Least squares</h4>
+              <p class="text-sm" style="margin-top:6px">
+                The normal equations <span class="mono">AᵀA x = Aᵀb</span> have a symmetric positive-definite
+                matrix, so LDLᵀ or Cholesky solves them, though QR on <span class="var">A</span> directly is
+                better conditioned.
+              </p>
+            </div>
+            <div class="card card-sm">
+              <h4>Optimisation</h4>
+              <p class="text-sm" style="margin-top:6px">
+                Newton and interior-point methods factor a Hessian or KKT matrix each iteration. The pivot signs
+                double as the second-order test.
+              </p>
+            </div>
+            <div class="card card-sm">
+              <h4>Kalman filtering</h4>
+              <p class="text-sm" style="margin-top:6px">
+                Covariance matrices are symmetric positive definite; propagating their LDLᵀ factors instead of the
+                matrices keeps them from losing definiteness to rounding.
+              </p>
+            </div>
+            <div class="card card-sm">
+              <h4>Computer algebra</h4>
+              <p class="text-sm" style="margin-top:6px">
+                Over the rationals, fraction-free variants such as Bareiss elimination keep entries from blowing
+                up: the same problem this site's arbitrary-precision arithmetic solves by brute force.
+              </p>
+            </div>
+          </div>
+
+          <div class="alert alert-info" style="margin-top:32px">
+            <span data-icon="arrowRight"></span>
+            <div>
+              <span class="alert-title">Next: check your understanding</span>
+              <p>
+                The <a class="link" href="practice.html">Practice page</a> generates questions from real matrices
+                and shows the reasoning after each answer.
+              </p>
+            </div>
+          </div>
+
+        </article>
+
+        <nav class="toc" id="toc-host" aria-label="On this page"></nav>
+      </div>
+
+      <div id="pagenav-host"></div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/applications.js"></script>
+</body>
+
+</html>

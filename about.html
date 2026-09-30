@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About | DecomposeX</title>
+  <meta name="description"
+    content="How DecomposeX is built: exact rational arithmetic on BigInt, the module layout, the test suite, accessibility notes and further reading on LDU factorization.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="about">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <header class="section-head" style="margin-bottom:36px">
+        <div class="eyebrow">About</div>
+        <h1>How this site is built</h1>
+        <p class="lead" style="max-width:70ch">
+          DecomposeX is a static site with no dependencies, no build step and no tracking. It runs from the file
+          system as happily as from a web server.
+        </p>
+      </header>
+
+      <div class="layout-toc">
+        <article class="prose">
+
+          <h2 id="exactness">Exact arithmetic</h2>
+          <p>
+            The design decision that shapes everything else: no value anywhere in this site is a floating-point
+            number. Every entry, multiplier, pivot and determinant is an exact ratio of two arbitrary-precision
+            integers.
+          </p>
+
+          <div class="code-head">js/fraction.js</div>
+          <pre class="block"><span class="kw">class</span> Fraction {
+  n: BigInt     <span class="cm">// numerator, carries the sign</span>
+  d: BigInt     <span class="cm">// denominator, always &gt; 0</span>
+
+  <span class="cm">// invariants, established in the constructor and never broken
+  //   d &gt; 0
+  //   gcd(|n|, d) = 1  (always in lowest terms)</span>
+}</pre>
+
+          <p>
+            Because every instance is reduced and frozen at construction, two fractions are equal exactly when
+            their numerators and denominators match. That makes <span class="mono">isZero()</span> a genuine test
+            rather than a tolerance, which is what allows the factorization to handle zero pivots correctly instead
+            of dividing by something that is merely small.
+          </p>
+
+          <div class="box">
+            <span class="box-label">What exactness buys, concretely</span>
+            <ul style="margin-top:8px">
+              <li><span class="mono">0.1 + 0.2</span> equals <span class="mono">0.3</span>.</li>
+              <li><span class="mono">1/3</span> added three times equals exactly <span class="mono">1</span>.</li>
+              <li>A singular matrix has a determinant of <span class="mono">0</span>, not <span class="mono">1.9e-16</span>.</li>
+              <li>Nine-digit entries stay exact where doubles have already lost digits.</li>
+              <li>Results display as <span class="mono">3/4</span> rather than <span class="mono">0.75000000001</span>.</li>
+            </ul>
+          </div>
+
+          <p>
+            The cost is growth: numerators and denominators get longer as elimination proceeds, and for a 10×10
+            matrix of awkward fractions they can reach dozens of digits. Computer-algebra systems avoid this with
+            fraction-free methods such as Bareiss elimination. For a teaching tool at these sizes, plain rational
+            arithmetic is simpler to read and fast enough to feel instant.
+          </p>
+
+          <h3 id="display">How numbers are displayed</h3>
+          <p>
+            Fractions are shown exactly. Decimals are <strong>truncated</strong>, not rounded, with a trailing
+            <span class="mono">…</span> marking digits that continue, so
+            <span class="mono">9999/10000</span> at three places shows as
+            <span class="mono">0.999…</span> and never as a misleading <span class="mono">1</span>. A separate
+            properly-rounded formatter is used for exports.
+          </p>
+
+          <h2 id="structure">Project structure</h2>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>File</th><th>Responsibility</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><span class="mono">js/fraction.js</span></td><td>Exact rational arithmetic on BigInt: parsing, the four operations, comparison and formatting.</td></tr>
+                <tr><td><span class="mono">js/matrix.js</span></td><td>Exact matrix algebra: multiply, transpose, determinant, rank, leading minors, text parsing, random generators.</td></tr>
+                <tr><td><span class="mono">js/ldu.js</span></td><td>The factorization itself, plus solving, inversion and the diagnostics. No DOM code.</td></tr>
+                <tr><td><span class="mono">js/render.js</span></td><td>Turns matrices and steps into accessible DOM. Knows nothing about how they were computed.</td></tr>
+                <tr><td><span class="mono">js/site.js</span></td><td>Shared chrome: navigation, footer, theme, toasts, clipboard, table of contents.</td></tr>
+                <tr><td><span class="mono">js/examples-data.js</span></td><td>The example library, with the outcome each example is meant to illustrate recorded alongside it.</td></tr>
+                <tr><td><span class="mono">css/main.css</span></td><td>One design system: tokens, components, light and dark palettes, print styles.</td></tr>
+                <tr><td><span class="mono">js/&lt;page&gt;.js</span></td><td>One file per page for that page's interactive parts.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The split that matters is between <span class="mono">ldu.js</span> and everything visual. The
+            factorization code has no reference to the DOM, which is why the same functions run in the calculator,
+            in every figure on the Theory and Algorithm pages, in the examples gallery, and in the test suite.
+          </p>
+
+          <h2 id="correctness">How correctness is checked</h2>
+          <p>
+            Three layers, all independent of the factorization code itself:
+          </p>
+          <ol>
+            <li>
+              <strong>Self-verification at runtime.</strong> Every factorization recomputes
+              <span class="mono">L·D·U</span> and compares it entry by entry with
+              <span class="mono">P·A</span>. The result is shown on the calculator's Verification tab, and a
+              failure would be reported rather than hidden. The same check runs behind every figure on the site.
+            </li>
+            <li>
+              <strong>Cross-checks between independent computations.</strong> The determinant is computed twice, once as the signed product of the pivots, once by a separate elimination, and rank is computed by a
+              different row-reduction that advances rows and columns independently. Leading principal minors give a
+              third, theoretical prediction of whether a permutation will be needed.
+            </li>
+            <li>
+              <strong>A test suite.</strong> 151 assertions, run with <span class="mono">node tests/run.js</span>
+              and needing no dependencies. They cover fraction parsing and formatting, the known-answer 3×3 case,
+              matrices needing permutations, singular matrices that still factor, the matrix that has no
+              factorization, symmetric and positive-definite detection, edge sizes from 1×1 up, big-integer
+              exactness, solving, inconsistency detection and inversion; plus randomised runs over several
+              hundred matrices asserting that the factors always multiply back and that the minor test always
+              predicts the permutation.
+            </li>
+          </ol>
+          <p>
+            Every claim in the example notes is asserted too: each entry records the outcome it is chosen to
+            illustrate, and the suite fails if the prose and the algorithm ever disagree.
+          </p>
+
+          <h2 id="what-changed">What this rewrite fixed</h2>
+          <p>
+            The original version of this project was a single page with a short script. It computed the right answer
+            for well-behaved matrices and silently wrong answers for everything else. The specific defects:
+          </p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Problem</th><th>What happened</th><th>Now</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Division by a zero pivot</strong></td>
+                  <td>No check before dividing, so a zero pivot produced <span class="mono">Infinity</span> and then <span class="mono">NaN</span> through the rest of the matrix.</td>
+                  <td>The pivot is tested exactly; a row swap is applied, or the failure is explained.</td>
+                </tr>
+                <tr>
+                  <td><strong>No row permutation</strong></td>
+                  <td>Matrices as simple as <span class="mono">[[0,1],[1,0]]</span>, perfectly invertible, returned garbage.</td>
+                  <td>Row swaps are tracked in P and the result is reported as <span class="mono">P·A = L·D·U</span>.</td>
+                </tr>
+                <tr>
+                  <td><strong>Floating-point drift</strong></td>
+                  <td>Errors accumulated through elimination and were hidden by <span class="mono">toFixed(2)</span>, so a mathematically exact 0 could print as <span class="mono">-0.00</span>.</td>
+                  <td>Exact rational arithmetic throughout; fractions display as fractions.</td>
+                </tr>
+                <tr>
+                  <td><strong>No verification</strong></td>
+                  <td>Nothing ever checked that the factors multiplied back to A.</td>
+                  <td>Checked on every run and shown.</td>
+                </tr>
+                <tr>
+                  <td><strong>No diagnostics</strong></td>
+                  <td>Singular and rank-deficient matrices were indistinguishable from well-behaved ones.</td>
+                  <td>Determinant, rank, minors, symmetry and definiteness all reported.</td>
+                </tr>
+                <tr>
+                  <td><strong>Unvalidated input</strong></td>
+                  <td>An empty cell parsed as <span class="mono">NaN</span> and poisoned the result with no warning.</td>
+                  <td>Each entry is validated as it is typed, with the offending cell marked.</td>
+                </tr>
+                <tr>
+                  <td><strong>Misleading steps</strong></td>
+                  <td>Snapshots of L and U were shown, but the elimination updates to A never were, so the steps did not explain the result.</td>
+                  <td>Each stage shows its multipliers, its row operations and the resulting matrix.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 id="accessibility">Accessibility and browser support</h2>
+          <ul>
+            <li>Every interactive control is a real <span class="mono">&lt;button&gt;</span>, <span class="mono">&lt;input&gt;</span> or <span class="mono">&lt;select&gt;</span>, reachable and operable by keyboard.</li>
+            <li>Matrices carry an <span class="mono">aria-label</span> that reads out row by row, since a grid of numbers is meaningless to a screen reader otherwise.</li>
+            <li>The matrix editor supports arrow-key navigation, <kbd>Enter</kbd> to factorize, and pasting a whole matrix into any cell.</li>
+            <li>Colour is never the only signal: every status also carries text.</li>
+            <li>Light and dark themes both meet WCAG AA contrast for body text; the theme follows the operating system until you choose one.</li>
+            <li><span class="mono">prefers-reduced-motion</span> is respected: all animation is disabled.</li>
+            <li>Print styles drop the navigation and controls so a factorization prints as a clean page.</li>
+          </ul>
+          <p>
+            The only hard requirement is <span class="mono">BigInt</span>, which every browser has supported since
+            2018. Chrome 67, Firefox 68, Safari 14, Edge 79.
+          </p>
+
+          <h2 id="reading">Further reading</h2>
+          <dl>
+            <dt>Gilbert Strang, <em>Introduction to Linear Algebra</em></dt>
+            <dd>Chapter 2 develops elimination into LU and then LDU, and is the clearest first exposition of why the factors are what they are.</dd>
+
+            <dt>Trefethen &amp; Bau, <em>Numerical Linear Algebra</em></dt>
+            <dd>Lectures 20–23 cover LU with pivoting and the stability analysis that motivates it. Essential if you care about floating-point behaviour.</dd>
+
+            <dt>Golub &amp; Van Loan, <em>Matrix Computations</em></dt>
+            <dd>The reference. Chapter 3 treats general linear systems; Chapter 4 covers LDLᵀ and Cholesky for symmetric matrices.</dd>
+
+            <dt>Higham, <em>Accuracy and Stability of Numerical Algorithms</em></dt>
+            <dd>Chapter 9 is the definitive account of error analysis for LU factorization, where the tolerance heuristics come from and when they fail.</dd>
+
+            <dt>Horn &amp; Johnson, <em>Matrix Analysis</em></dt>
+            <dd>Section 3.5 gives the existence and uniqueness results in full generality, including the singular cases this site handles.</dd>
+          </dl>
+
+          <h2 id="project">The project</h2>
+          <p>
+            DecomposeX is open source. Corrections to the mathematics are especially welcome. If you find a matrix
+            where the factorization or a diagnostic is wrong, that is a bug worth reporting, and the matrix itself
+            is the whole report.
+          </p>
+          <div class="row" style="margin-top:18px">
+            <a class="btn" href="https://github.com/iPriyadarshi/DecomposeX" target="_blank" rel="noopener">
+              <span data-icon="github"></span> View the source
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/iPriyadarshi/DecomposeX/issues" target="_blank" rel="noopener">
+              Report an issue
+            </a>
+          </div>
+
+          <h3 id="running">Running it locally</h3>
+          <div class="code-head">terminal</div>
+          <pre class="block">git clone https://github.com/iPriyadarshi/DecomposeX.git
+<span class="kw">cd</span> DecomposeX
+
+<span class="cm"># open index.html directly; there is no build step</span>
+start index.html        <span class="cm"># Windows</span>
+open index.html         <span class="cm"># macOS</span>
+xdg-open index.html     <span class="cm"># Linux</span></pre>
+          <p class="text-sm">
+            Everything works over <span class="mono">file://</span>. The only network request is the web font, and
+            the design falls back to system fonts without it.
+          </p>
+
+        </article>
+
+        <nav class="toc" id="toc-host" aria-label="On this page"></nav>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/about.js"></script>
+</body>
+
+</html>

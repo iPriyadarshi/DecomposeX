@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Algorithm | DecomposeX</title>
+  <meta name="description"
+    content="How LDU factorization is computed: deriving it from Gaussian elimination, handling zero pivots, pseudocode, complexity, and the numerical pitfalls of floating point.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="algorithm">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <header class="section-head" style="margin-bottom:36px">
+        <div class="eyebrow">The Algorithm</div>
+        <h1>Computing L, D and U</h1>
+        <p class="lead" style="max-width:70ch">
+          LDU factorization is Gaussian elimination with bookkeeping. This page shows where each factor comes from,
+          what to do when a pivot is zero, and how the whole thing fits in a page of pseudocode.
+        </p>
+      </header>
+
+      <div class="layout-toc">
+        <article class="prose">
+
+          <!-- ================= 1 ================= -->
+          <h2 id="idea">The central observation</h2>
+          <p>
+            Elimination clears the entries below a pivot by subtracting multiples of the pivot row. The key insight
+            is that <strong>each such row operation is invertible, and its inverse is recorded by a single
+            number</strong>: the multiplier that was used.
+          </p>
+          <p>
+            At stage <span class="var">k</span>, with pivot <span class="mono">a<sub>kk</sub></span>, the operation
+            applied to row <span class="var">i</span> below it is
+          </p>
+          <div class="eq">
+            R<sub><em>i</em></sub> ← R<sub><em>i</em></sub> − <em>m</em><sub><em>ik</em></sub> · R<sub><em>k</em></sub>,
+            &nbsp;&nbsp; where &nbsp; <em>m</em><sub><em>ik</em></sub> = <em>a</em><sub><em>ik</em></sub> ⁄ <em>a</em><sub><em>kk</em></sub>.
+          </div>
+          <p>
+            To undo it you add the same multiple back. So if you keep every
+            <span class="mono">m<sub>ik</sub></span>, you have kept enough information to rebuild the original
+            matrix from the reduced one, and the natural place to keep them is exactly the position they cleared.
+            That array of multipliers <em>is</em> <span class="var">L</span>.
+          </p>
+
+          <div class="box">
+            <span class="box-label">Where each factor comes from</span>
+            <dl>
+              <dt><span class="var">L</span></dt>
+              <dd>The multipliers. <span class="mono">ℓ<sub>ik</sub> = m<sub>ik</sub></span>, stored in the very position that the operation zeroed out. The diagonal is 1 because a row is never scaled against itself.</dd>
+              <dt><span class="var">Û</span></dt>
+              <dd>What elimination leaves behind: an upper-triangular matrix whose diagonal entries are the pivots actually used.</dd>
+              <dt><span class="var">D</span></dt>
+              <dd>Those pivots, lifted off the diagonal of <span class="mono">Û</span>.</dd>
+              <dt><span class="var">U</span></dt>
+              <dd><span class="mono">Û</span> with each row divided by its own pivot, which leaves 1s on the diagonal.</dd>
+            </dl>
+          </div>
+
+          <h3 id="elementary">The same thing as a matrix product</h3>
+          <p>
+            Formally, clearing column <span class="var">k</span> is left-multiplication by an elementary matrix
+            <span class="var">E</span><sub><span class="var">k</span></sub>: the identity with the multipliers
+            placed, negated, below the diagonal in column <span class="var">k</span>. Elimination is therefore
+          </p>
+          <div class="eq">
+            <em>E</em><sub><em>n</em>−1</sub> ⋯ <em>E</em><sub>2</sub> <em>E</em><sub>1</sub> <em>A</em> = <em>Û</em>
+          </div>
+          <p>and rearranging gives the factorization directly:</p>
+          <div class="eq">
+            <em>A</em> = <em>E</em><sub>1</sub><sup>−1</sup> <em>E</em><sub>2</sub><sup>−1</sup> ⋯ <em>E</em><sub><em>n</em>−1</sub><sup>−1</sup> <em>Û</em>
+            = <em>L</em> <em>Û</em>
+          </div>
+          <p>
+            The product of those inverses collapses into a single unit lower-triangular matrix whose entries are
+            just the multipliers, un-negated, which is why <span class="var">L</span> can be filled in as you go,
+            with no extra multiplication.
+          </p>
+          <div id="elementary-demo"></div>
+
+          <!-- ================= 2 ================= -->
+          <h2 id="walkthrough">A full walkthrough</h2>
+          <p>
+            Here is every arithmetic operation for one 3×3 matrix, computed live. Open any stage to see the
+            multipliers and the row operations that produced the next matrix.
+          </p>
+          <div id="walkthrough-demo"></div>
+
+          <!-- ================= 3 ================= -->
+          <h2 id="pivots">Handling a zero pivot</h2>
+          <p>
+            Everything above assumed <span class="mono">a<sub>kk</sub> ≠ 0</span>. A correct implementation has to
+            decide what to do when it is not, and there are exactly three situations. Getting this wrong is the
+            most common bug in hand-written LDU code: dividing by zero silently yields
+            <span class="mono">Infinity</span> or <span class="mono">NaN</span>, which then contaminates every
+            later entry.
+          </p>
+
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Situation at stage k</th><th>Correct response</th><th>Result</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pivot is zero, but some row below has a non-zero entry in column <span class="var">k</span></td>
+                  <td>Swap that row up and continue</td>
+                  <td><span class="mono">P·A = L·D·U</span></td>
+                </tr>
+                <tr>
+                  <td>Column <span class="var">k</span> is zero from row <span class="var">k</span> down, and row <span class="var">k</span> is also empty to the right</td>
+                  <td>Set <span class="mono">d<sub>k</sub> = 0</span>, take row <span class="var">k</span> of <span class="var">U</span> to be <span class="mono">e<sub>k</sub></span>, continue</td>
+                  <td>Factorization holds, but <span class="var">U</span> is not unique</td>
+                </tr>
+                <tr>
+                  <td>Column <span class="var">k</span> is zero from row <span class="var">k</span> down, but row <span class="var">k</span> is <em>not</em> empty</td>
+                  <td>Report that no LDU factorization exists</td>
+                  <td>Only the LU form <span class="mono">A = L·Û</span> is available</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="box box-warn">
+            <span class="box-label">Why the third case is genuinely impossible</span>
+            <p>
+              If <span class="mono">d<sub>k</sub> = 0</span> then row <span class="var">k</span> of
+              <span class="mono">D·U</span> is zero, because that row of the product is
+              <span class="mono">d<sub>k</sub></span> times row <span class="var">k</span> of
+              <span class="var">U</span>. Row <span class="var">k</span> of
+              <span class="mono">L·D·U</span> is then determined entirely by the rows <em>above</em> it. If
+              elimination has left something non-zero in row <span class="var">k</span>, no choice of
+              <span class="var">U</span> can reproduce it. The obstruction is structural, not numerical.
+            </p>
+          </div>
+
+          <div id="pivot-cases-demo"></div>
+
+          <h3 id="partial-pivoting">Partial pivoting, and why exact arithmetic changes the picture</h3>
+          <p>
+            Numerical libraries do not wait for a pivot to be exactly zero. They always swap the
+            <em>largest</em> available entry into the pivot position, because dividing by a small number amplifies
+            rounding error. That strategy is called <strong>partial pivoting</strong>, and it is why
+            <span class="mono">PA = LU</span> is the default in LAPACK, NumPy and MATLAB.
+          </p>
+          <p>
+            With exact rational arithmetic there is no rounding error to amplify, so partial pivoting buys no
+            accuracy: every strategy gives an exactly correct answer. What it changes is
+            <em>which</em> correct answer you get, since a different <span class="var">P</span> means different
+            <span class="var">L</span>, <span class="var">D</span> and <span class="var">U</span>. That is why the
+            calculator defaults to swapping <strong>only when forced</strong>: it keeps
+            <span class="var">P</span> equal to the identity whenever the matrix allows, which is the form a
+            textbook expects.
+          </p>
+          <p class="text-sm">
+            You can switch strategies in the calculator's <em>Display &amp; method</em> panel and watch
+            <span class="var">P</span> change while the verification stays green.
+          </p>
+
+          <!-- ================= 4 ================= -->
+          <h2 id="pseudocode">Pseudocode</h2>
+          <p>
+            The whole method, with the pivot handling written out rather than assumed away. Indices are 1-based.
+          </p>
+
+          <div class="code-head">Phase 1: elimination</div>
+          <pre class="block"><span class="cm">// Input:  A, an n×n matrix
+// Output: L unit lower triangular, Û upper triangular,
+//         perm (the row order), swaps (a count)</span>
+
+<span class="kw">L</span> ← identity(n)
+<span class="kw">Û</span> ← copy(A)
+<span class="kw">perm</span> ← [1, 2, …, n]
+<span class="kw">swaps</span> ← 0
+
+<span class="kw">for</span> k ← 1 <span class="kw">to</span> n:
+
+    <span class="cm">// --- choose a pivot ---</span>
+    <span class="kw">if</span> Û[k][k] = 0:
+        r ← smallest index &gt; k with Û[r][k] ≠ 0, or none
+        <span class="kw">if</span> r exists:
+            swap rows k and r of Û
+            swap L[k][1.k−1] with L[r][1.k−1]   <span class="cm">// multipliers travel with their rows</span>
+            swap perm[k] and perm[r]
+            swaps ← swaps + 1
+        <span class="kw">else</span>:
+            <span class="cm">// column k is empty below the diagonal: nothing to do,
+            // and d_k will be 0. Phase 2 decides whether that is fatal.</span>
+            <span class="kw">continue</span>
+
+    <span class="cm">// --- eliminate below the pivot ---</span>
+    <span class="kw">for</span> i ← k+1 <span class="kw">to</span> n:
+        <span class="kw">if</span> Û[i][k] = 0:
+            L[i][k] ← 0                    <span class="cm">// already clear, no work</span>
+            <span class="kw">continue</span>
+        m ← Û[i][k] / Û[k][k]
+        L[i][k] ← m
+        <span class="kw">for</span> j ← k <span class="kw">to</span> n:
+            Û[i][j] ← Û[i][j] − m · Û[k][j]
+        Û[i][k] ← 0                        <span class="cm">// exact by construction; assign it rather than
+                                              // trusting the subtraction to land on zero</span></pre>
+
+          <div class="code-head" style="margin-top:24px">Phase 2: split Û into D · U</div>
+          <pre class="block"><span class="kw">D</span> ← zeros(n, n)
+<span class="kw">U</span> ← identity(n)
+<span class="kw">failed</span> ← none
+
+<span class="kw">for</span> k ← 1 <span class="kw">to</span> n:
+    d ← Û[k][k]
+    D[k][k] ← d
+
+    <span class="kw">if</span> d = 0:
+        <span class="kw">if</span> row k of Û is entirely zero:
+            U[k][*] ← e_k          <span class="cm">// any unit-triangular row works; pick the simplest</span>
+        <span class="kw">else</span>:
+            failed ← k             <span class="cm">// no LDU factorization exists</span>
+        <span class="kw">continue</span>
+
+    <span class="kw">for</span> j ← k <span class="kw">to</span> n:
+        U[k][j] ← Û[k][j] / d
+    U[k][k] ← 1                    <span class="cm">// exact by construction</span>
+
+<span class="kw">if</span> failed ≠ none: report failure, return L and Û only
+<span class="kw">else</span>: <span class="kw">return</span> L, D, U, perm, swaps</pre>
+
+          <div class="box" style="margin-top:24px">
+            <span class="box-label">The detail that catches everyone</span>
+            <p>
+              When rows <span class="var">k</span> and <span class="var">r</span> are swapped,
+              <strong>the multipliers already stored in <span class="var">L</span> must be swapped too</strong>, but only those in columns <span class="mono">1 … k−1</span>. Those entries belong to rows of the
+              original matrix, and if a row moves, the record of how it was reduced moves with it. Swapping the
+              whole row of <span class="var">L</span> (including the diagonal 1) breaks the unit structure;
+              swapping nothing gives a product that is silently wrong.
+            </p>
+          </div>
+
+          <!-- ================= 5 ================= -->
+          <h2 id="verify">Always verify</h2>
+          <p>
+            The factorization is cheap to check and the check is completely independent of the algorithm: just
+            multiply the factors back and compare. It takes <span class="mono">O(n³)</span> operations, the same
+            order as the factorization itself, and it catches every class of bug discussed above.
+          </p>
+          <div class="code-head">Verification</div>
+          <pre class="block"><span class="kw">assert</span> L · D · U = P · A     <span class="cm">// entry by entry</span>
+<span class="kw">assert</span> L · Û     = P · A     <span class="cm">// the LU form, valid even when LDU is not</span>
+<span class="kw">assert</span> det A = (−1)^swaps · d₁ · d₂ ⋯ dₙ</pre>
+          <p>
+            In exact arithmetic these are literal equalities, which is what the
+            <a class="link" href="calculator.html">calculator</a> reports on its Verification tab. In floating
+            point you would instead check that the residual is small relative to the size of the entries, and
+            &ldquo;small&rdquo; is a judgement call, which is exactly the ambiguity exact arithmetic removes.
+          </p>
+
+          <!-- ================= 6 ================= -->
+          <h2 id="complexity">Cost</h2>
+          <p>
+            Stage <span class="var">k</span> computes <span class="mono">n − k</span> multipliers and updates an
+            <span class="mono">(n − k) × (n − k + 1)</span> block. Summing over all stages:
+          </p>
+          <div class="eq">
+            ∑<sub><em>k</em>=1</sub><sup><em>n</em></sup> (<em>n</em> − <em>k</em>)<sup>2</sup>
+            ≈ <em>n</em><sup>3</sup> ⁄ 3 &nbsp; multiply&ndash;add pairs
+          </div>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Task</th><th>Cost</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Phase 1: elimination</td><td><span class="mono">~n³/3</span></td><td>Dominates everything else</td></tr>
+                <tr><td>Phase 2: the D/U split</td><td><span class="mono">~n²/2</span> divisions</td><td>Negligible</td></tr>
+                <tr><td>Solving one system afterwards</td><td><span class="mono">~n²</span></td><td>Two substitutions plus n divisions</td></tr>
+                <tr><td>Determinant from the factors</td><td><span class="mono">n</span></td><td>Multiply the pivots, apply the sign</td></tr>
+                <tr><td>Full inverse</td><td><span class="mono">~n³</span></td><td>n substitution pairs, reusing one factorization</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            This is the payoff that motivates the whole exercise: the expensive part depends only on
+            <span class="var">A</span>. Factor once at <span class="mono">n³/3</span>, then answer each new
+            right-hand side for <span class="mono">n²</span>. For <span class="mono">n = 1000</span> that is the
+            difference between a third of a billion operations and a million.
+          </p>
+
+          <!-- ================= 7 ================= -->
+          <h2 id="floating-point">Why this site does not use floating point</h2>
+          <p>
+            Every implementation decision above assumed you can answer the question
+            <em>&ldquo;is this pivot zero?&rdquo;</em>. In floating point you often cannot.
+          </p>
+          <p>
+            Doubles store about 15–16 significant decimal digits. Subtracting two nearly equal numbers destroys
+            most of them, and elimination does exactly that, repeatedly. A pivot that is mathematically zero
+            typically emerges as something like <span class="mono">4.9e-17</span>: not zero, so the test for a
+            zero pivot passes, and the algorithm happily divides by it. The multipliers explode, and the reported
+            factors are meaningless while looking perfectly respectable to two decimal places.
+          </p>
+
+          <p>The failure takes two forms, and the demonstration below computes both for real.</p>
+
+          <div class="box box-warn">
+            <span class="box-label">Failure 1: the loud one</span>
+            <p>
+              When a pivot does come out as exactly <span class="mono">0.0</span>, dividing by it gives
+              <span class="mono">Infinity</span>, and the next subtraction turns that into
+              <span class="mono">NaN</span>. Every later entry is poisoned. An implementation that does not test
+              the pivot before dividing produces a grid of <span class="mono">NaN</span>, and if it formats
+              output with something like <span class="mono">toFixed(2)</span>, that grid can still look like a
+              plausible answer.
+            </p>
+          </div>
+
+          <div class="box box-warn">
+            <span class="box-label">Failure 2: the quiet one</span>
+            <p>
+              Worse is when cancellation leaves a pivot that is <em>nearly</em> zero rather than zero. The test
+              <span class="mono">pivot === 0</span> passes, no swap is triggered, no warning is raised, and the
+              algorithm reports a singular matrix as invertible, with a determinant of around
+              <span class="mono">10<sup>−16</sup></span> instead of exactly 0.
+            </p>
+          </div>
+
+          <div id="fp-demo"></div>
+
+          <p>
+            The alternative is a tolerance: treat anything below, say,
+            <span class="mono">10<sup>−12</sup></span> as zero. That works in practice for well-scaled problems,
+            but it is a heuristic: multiply the matrix by <span class="mono">10<sup>−10</sup></span> and the
+            tolerance misfires. For a teaching tool that is the wrong trade, so DecomposeX stores every value as a
+            ratio of arbitrary-precision integers:
+          </p>
+          <div class="code-head">The representation</div>
+          <pre class="block"><span class="kw">class</span> Fraction:
+    n: BigInt        <span class="cm">// numerator, carries the sign</span>
+    d: BigInt        <span class="cm">// denominator, always &gt; 0</span>
+    <span class="cm">// invariant: gcd(|n|, d) = 1  (always in lowest terms)</span></pre>
+          <p>
+            Addition, subtraction, multiplication and division of rationals are closed operations, so nothing is
+            ever approximated. The cost is that numerators and denominators grow: for a 10×10 matrix they can
+            reach dozens of digits, which is a fine price for a tool whose job is to be right and to be
+            understood.
+          </p>
+
+          <div class="alert alert-info" style="margin-top:28px">
+            <span data-icon="arrowRight"></span>
+            <div>
+              <span class="alert-title">Next: run it yourself</span>
+              <p>
+                The <a class="link" href="calculator.html">calculator</a> implements exactly the pseudocode above
+                and shows every stage. Or go straight to the
+                <a class="link" href="examples.html">worked examples</a> to see each pivot case in action.
+              </p>
+            </div>
+          </div>
+
+        </article>
+
+        <nav class="toc" id="toc-host" aria-label="On this page"></nav>
+      </div>
+
+      <div id="pagenav-host"></div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/algorithm.js"></script>
+</body>
+
+</html>

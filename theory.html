@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Theory | DecomposeX</title>
+  <meta name="description"
+    content="The theory of LDU factorization: triangular matrices, the existence and uniqueness theorems, leading principal minors, permutations, and the symmetric LDLᵀ case.">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/main.css">
+
+  <script>
+    /* Resolve the theme before the first paint: the stored choice if there is
+       one, otherwise the operating-system preference. Always setting an
+       explicit data-theme keeps the stylesheet to a single dark block. */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark': 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="theory">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="nav-host" style="min-height:62px"></div>
+
+  <main id="main">
+    <div class="wrap">
+
+      <header class="section-head" style="margin-bottom:36px">
+        <div class="eyebrow">Theory</div>
+        <h1>What LDU factorization actually says</h1>
+        <p class="lead" style="max-width:70ch">
+          Three definitions, two theorems and one honest caveat. By the end of this page you will know exactly
+          which matrices factor, which do not, and why the factors are unique when they exist.
+        </p>
+      </header>
+
+      <div class="layout-toc">
+        <article class="prose">
+
+          <!-- ================= 1 ================= -->
+          <h2 id="why">Why split a matrix at all?</h2>
+          <p>
+            Solving <span class="var">A</span><span class="var">x</span> = <span class="var">b</span> by elimination
+            costs roughly <span class="mono">n³/3</span> operations. If you have a second right-hand side, naive
+            elimination makes you pay that cost all over again, even though the work depended only on
+            <span class="var">A</span>, not on <span class="var">b</span>.
+          </p>
+          <p>
+            A factorization records that work once. Elimination is fundamentally a sequence of row operations, and
+            every such sequence can be bottled up as a matrix product. Once you have
+            <span class="var">A</span> = <span class="var">LDU</span>, solving a new system costs only
+            <span class="mono">n²</span>, and the same three factors also hand you the determinant, the rank,
+            the inverse and a definiteness test.
+          </p>
+          <blockquote>
+            The point of a factorization is not the factors. It is that <em>triangular systems are easy</em>,
+            and a factorization is how you turn a hard system into a chain of easy ones.
+          </blockquote>
+
+          <h3 id="triangular-easy">Why triangular systems are easy</h3>
+          <p>
+            In a lower-triangular system the first equation involves only
+            <span class="var">x</span><sub>1</sub>, so you read it off immediately; the second then involves only
+            <span class="var">x</span><sub>1</sub> and <span class="var">x</span><sub>2</sub>, and so on down the
+            matrix. This is <strong>forward substitution</strong>. Running it upwards through an upper-triangular
+            system is <strong>back substitution</strong>. Each costs about
+            <span class="mono">n²/2</span> multiply&ndash;add pairs, and if the diagonal is all 1s it needs no
+            division at all.
+          </p>
+
+          <!-- ================= 2 ================= -->
+          <h2 id="definitions">The three kinds of factor</h2>
+
+          <div class="box box-def">
+            <span class="box-label">Definition: triangular and unit triangular</span>
+            <p>
+              A square matrix <span class="var">L</span> is <strong>lower triangular</strong> if
+              <span class="mono">ℓ<sub>ij</sub> = 0</span> whenever <span class="mono">i &lt; j</span>: everything
+              strictly above the diagonal vanishes. It is <strong>unit</strong> lower triangular if in addition
+              every diagonal entry is 1. <strong>Upper triangular</strong> and <strong>unit upper triangular</strong>
+              are defined the same way with the inequality reversed.
+            </p>
+            <p style="margin-top:10px">
+              A matrix that is both lower and upper triangular is <strong>diagonal</strong>. This tiny observation
+              is the whole engine of the uniqueness proof below.
+            </p>
+          </div>
+
+          <div id="shapes-demo" style="margin-top:20px"></div>
+
+          <div class="box box-def" style="margin-top:24px">
+            <span class="box-label">Definition: LDU factorization</span>
+            <p>
+              An <strong>LDU factorization</strong> of a square matrix <span class="var">A</span> is a product
+            </p>
+            <div class="eq" style="margin:14px 0">
+              <em>A</em> = <em>L</em> <em>D</em> <em>U</em>
+            </div>
+            <p>in which</p>
+            <ul style="margin-top:10px">
+              <li><span class="var">L</span> is <strong>unit lower triangular</strong>: the multipliers, with 1s on the diagonal;</li>
+              <li><span class="var">D</span> is <strong>diagonal</strong>: the pivots <span class="mono">d<sub>1</sub>, …, d<sub>n</sub></span>;</li>
+              <li><span class="var">U</span> is <strong>unit upper triangular</strong>: the shape of the reduced system, with 1s on the diagonal.</li>
+            </ul>
+            <p style="margin-top:12px">
+              The factorization is called <strong>non-singular</strong> when every
+              <span class="mono">d<sub>k</sub> ≠ 0</span>, which is exactly when <span class="var">A</span> is invertible.
+            </p>
+          </div>
+
+          <p>
+            Fixing 1s on both unit diagonals is what makes the factorization <em>canonical</em>. Without that
+            convention you could slide any non-zero scale factor from <span class="var">L</span> into
+            <span class="var">D</span> and out into <span class="var">U</span>, and the factors would not be unique.
+          </p>
+
+          <h3 id="vs-lu">LDU compared with LU</h3>
+          <p>
+            An <strong>LU factorization</strong> asks only for <span class="var">A</span> = <span class="var">LÛ</span>
+            with one triangular factor on each side. That leaves a choice of normalisation, and different textbooks
+            make it differently:
+          </p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Name</th><th>Normalisation</th><th>Relation to LDU</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Doolittle</strong></td>
+                  <td><span class="var">L</span> has 1s on the diagonal</td>
+                  <td><span class="mono">Û = D·U</span>: the pivots stay in the upper factor</td>
+                </tr>
+                <tr>
+                  <td><strong>Crout</strong></td>
+                  <td><span class="var">U</span> has 1s on the diagonal</td>
+                  <td><span class="mono">L̂ = L·D</span>: the pivots stay in the lower factor</td>
+                </tr>
+                <tr>
+                  <td><strong>LDU</strong></td>
+                  <td><em>both</em> have 1s on the diagonal</td>
+                  <td>the pivots get a factor of their own</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            So LDU is not a different computation from LU; it is the same elimination with the scaling made
+            explicit. That is why the calculator on this site reports both: elimination naturally produces
+            <span class="mono">Û</span>, and dividing each row of <span class="mono">Û</span> by its own diagonal
+            entry separates <span class="var">D</span> from <span class="var">U</span>.
+          </p>
+          <div id="lu-vs-ldu-demo"></div>
+
+          <!-- ================= 3 ================= -->
+          <h2 id="existence">When does a factorization exist?</h2>
+          <p>
+            Not every matrix has one. The obstruction is always the same: elimination needs to divide by a pivot,
+            and a pivot can be zero. The remarkable thing is that you can predict this in advance, without running
+            the elimination, by looking at determinants of the top-left corners.
+          </p>
+
+          <div class="box box-def">
+            <span class="box-label">Definition: leading principal minor</span>
+            <p>
+              The <strong>k-th leading principal minor</strong> of <span class="var">A</span>, written
+              <span class="mono">D<sub>k</sub></span>, is the determinant of the top-left
+              <span class="mono">k × k</span> block of <span class="var">A</span>. By convention
+              <span class="mono">D<sub>0</sub> = 1</span>, and <span class="mono">D<sub>n</sub> = det A</span>.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="box-label">Theorem 1: existence and the minor test</span>
+            <p>
+              Let <span class="var">A</span> be an <span class="mono">n × n</span> matrix over a field.
+              Then <span class="var">A</span> has a <strong>non-singular</strong> LDU factorization; that is, <span class="var">A</span> = <span class="var">LDU</span> with unit triangular
+              <span class="var">L</span>, <span class="var">U</span> and invertible diagonal
+              <span class="var">D</span>, if and only if
+            </p>
+            <div class="eq" style="margin:14px 0">
+              <em>D</em><sub>1</sub> ≠ 0,&nbsp;&nbsp; <em>D</em><sub>2</sub> ≠ 0,&nbsp;&nbsp; …,&nbsp;&nbsp; <em>D</em><sub><em>n</em></sub> ≠ 0.
+            </div>
+            <p>In that case the pivots are determined by the minors:</p>
+            <div class="eq" style="margin:14px 0">
+              <em>d</em><sub><em>k</em></sub> = <em>D</em><sub><em>k</em></sub> ⁄ <em>D</em><sub><em>k</em>−1</sub>,
+              &nbsp;&nbsp; <em>k</em> = 1, …, <em>n</em>.
+            </div>
+          </div>
+
+          <div class="box box-proof">
+            <span class="box-label">Proof of the minor formula</span>
+            <p>
+              Suppose <span class="var">A</span> = <span class="var">LDU</span>. Because all three factors are
+              triangular, the top-left <span class="mono">k × k</span> block of the product is the product of the
+              top-left <span class="mono">k × k</span> blocks, entries from outside the corner cannot reach into
+              it. Writing <span class="var">A</span><sub><span class="var">k</span></sub> for that block,
+            </p>
+            <div class="eq" style="margin:12px 0">
+              <em>A</em><sub><em>k</em></sub> = <em>L</em><sub><em>k</em></sub> <em>D</em><sub><em>k</em></sub> <em>U</em><sub><em>k</em></sub>.
+            </div>
+            <p>
+              Taking determinants and using <span class="mono">det L<sub>k</sub> = det U<sub>k</sub> = 1</span>
+              (triangular with 1s on the diagonal) gives
+              <span class="mono">D<sub>k</sub> = d<sub>1</sub>d<sub>2</sub>⋯d<sub>k</sub></span>.
+              Dividing consecutive cases yields
+              <span class="mono">d<sub>k</sub> = D<sub>k</sub>/D<sub>k−1</sub></span>, and since each
+              <span class="mono">d<sub>k</sub> ≠ 0</span>, every <span class="mono">D<sub>k</sub> ≠ 0</span>.
+              Conversely, if every minor is non-zero then no pivot encountered during elimination can vanish,
+              because the pivot at stage <span class="var">k</span> equals
+              <span class="mono">D<sub>k</sub>/D<sub>k−1</sub></span>, so the elimination runs to completion
+              and produces the factors.
+            </p>
+          </div>
+
+          <p>
+            Two consequences worth keeping in mind. First, <strong>the test is about corners, not about
+            individual entries</strong>: a matrix can have a perfectly innocent-looking
+            <span class="mono">a<sub>22</sub></span> and still fail, because the pivot at stage 2 is what is left
+            of <span class="mono">a<sub>22</sub></span> <em>after</em> stage 1.
+          </p>
+          <div id="hidden-zero-demo"></div>
+          <p>
+            Second, <strong>failing the test does not mean the matrix is singular</strong>. The smallest
+            counterexample is a permutation matrix:
+          </p>
+          <div id="swap-demo"></div>
+          <p>
+            Here <span class="mono">D<sub>1</sub> = 0</span>, so there is no LDU factorization, yet
+            <span class="mono">det A = −1</span> and the matrix is perfectly invertible. Invertibility and
+            factorability are different questions, and the fix is a permutation.
+          </p>
+
+          <h3 id="singular-case">What about singular matrices?</h3>
+          <p>
+            Theorem 1 is about invertible <span class="var">D</span>. If we relax that and allow zeros on the
+            diagonal, some singular matrices still factor and some genuinely do not. The dividing line is easy to
+            state once you notice that <span class="mono">d<sub>k</sub> = 0</span> forces row
+            <span class="var">k</span> of <span class="var">DU</span> to be entirely zero, whatever
+            <span class="var">U</span> holds:
+          </p>
+          <ul>
+            <li>
+              If elimination leaves row <span class="var">k</span> <strong>completely empty</strong> whenever
+              <span class="mono">d<sub>k</sub> = 0</span>, the identity still holds. The factorization exists but
+              is <strong>no longer unique</strong>, that row of <span class="var">U</span> can be anything
+              unit triangular.
+            </li>
+            <li>
+              If a zero pivot sits beside a <strong>non-empty row</strong>, the two sides cannot be reconciled and
+              <strong>no LDU factorization exists</strong>: not even a singular one. The LU form
+              <span class="mono">A = LÛ</span> survives, which is why the calculator still shows it.
+            </li>
+          </ul>
+          <p class="text-sm">
+            <a class="link" href="examples.html#singular">Both cases are worked out in the examples gallery</a>,
+            including the smallest matrix with no LDU factorization at all.
+          </p>
+
+          <!-- ================= 4 ================= -->
+          <h2 id="uniqueness">Uniqueness</h2>
+          <p>
+            When a non-singular LDU factorization exists, there is exactly one. The proof is short and worth
+            reading, because it explains why the unit diagonals are not an arbitrary convention.
+          </p>
+
+          <div class="box">
+            <span class="box-label">Lemma</span>
+            <p>
+              Unit lower-triangular matrices form a group: a product of two is unit lower triangular, and so is
+              the inverse of one. The same holds for unit upper-triangular matrices.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="box-label">Theorem 2: uniqueness</span>
+            <p>
+              If <span class="var">A</span> is invertible and
+              <span class="mono">A = L<sub>1</sub>D<sub>1</sub>U<sub>1</sub> = L<sub>2</sub>D<sub>2</sub>U<sub>2</sub></span>
+              are two non-singular LDU factorizations, then
+              <span class="mono">L<sub>1</sub> = L<sub>2</sub></span>,
+              <span class="mono">D<sub>1</sub> = D<sub>2</sub></span> and
+              <span class="mono">U<sub>1</sub> = U<sub>2</sub></span>.
+            </p>
+          </div>
+
+          <div class="box box-proof">
+            <span class="box-label">Proof</span>
+            <p>
+              From
+              <span class="mono">L<sub>1</sub>D<sub>1</sub>U<sub>1</sub> = L<sub>2</sub>D<sub>2</sub>U<sub>2</sub></span>,
+              multiply on the left by <span class="mono">L<sub>2</sub><sup>−1</sup></span> and on the right by
+              <span class="mono">U<sub>1</sub><sup>−1</sup></span>:
+            </p>
+            <div class="eq" style="margin:12px 0">
+              (<em>L</em><sub>2</sub><sup>−1</sup><em>L</em><sub>1</sub>) <em>D</em><sub>1</sub>
+              = <em>D</em><sub>2</sub> (<em>U</em><sub>2</sub><em>U</em><sub>1</sub><sup>−1</sup>).
+            </div>
+            <p>
+              By the lemma, <span class="mono">L<sub>2</sub><sup>−1</sup>L<sub>1</sub></span> is unit lower
+              triangular, so the left side is lower triangular with diagonal exactly
+              <span class="mono">D<sub>1</sub></span>. Likewise
+              <span class="mono">U<sub>2</sub>U<sub>1</sub><sup>−1</sup></span> is unit upper triangular, so the
+              right side is upper triangular with diagonal exactly <span class="mono">D<sub>2</sub></span>.
+              A matrix that is simultaneously lower and upper triangular is diagonal; therefore both sides equal
+              their own diagonal, giving <span class="mono">D<sub>1</sub> = D<sub>2</sub></span>. Cancelling the
+              invertible <span class="mono">D<sub>1</sub></span> leaves
+              <span class="mono">L<sub>2</sub><sup>−1</sup>L<sub>1</sub> = I</span> and
+              <span class="mono">U<sub>2</sub>U<sub>1</sub><sup>−1</sup> = I</span>.
+            </p>
+          </div>
+
+          <p>
+            Notice exactly where invertibility of <span class="var">D</span> is used, in the cancellation. That is
+            precisely why the singular case above loses uniqueness.
+          </p>
+
+          <!-- ================= 5 ================= -->
+          <h2 id="permutations">Permutations: PA = LDU</h2>
+          <p>
+            A zero pivot is not fatal, because the rows of a matrix may be reordered freely. Reordering is itself a
+            matrix operation: swapping rows <span class="var">i</span> and <span class="var">j</span> of
+            <span class="var">A</span> is the same as forming <span class="mono">E·A</span>, where
+            <span class="var">E</span> is the identity with those two rows swapped. A product of such swaps is a
+            <strong>permutation matrix</strong> <span class="var">P</span>.
+          </p>
+
+          <div class="box">
+            <span class="box-label">Theorem 3: factorization with pivoting</span>
+            <p>
+              For every invertible <span class="var">A</span> there is a permutation matrix
+              <span class="var">P</span> such that
+            </p>
+            <div class="eq" style="margin:14px 0">
+              <em>P</em><em>A</em> = <em>L</em><em>D</em><em>U</em>
+            </div>
+            <p>
+              with <span class="var">L</span> unit lower triangular, <span class="var">D</span> diagonal and
+              invertible, and <span class="var">U</span> unit upper triangular.
+            </p>
+          </div>
+
+          <p>
+            The reason is simply that elimination can always find a pivot: if
+            <span class="var">A</span> is invertible, no column can be entirely zero below the diagonal at the stage
+            it is reached, since that would make the columns linearly dependent. Choose any non-zero entry, swap it
+            up, and continue.
+          </p>
+
+          <div class="box box-warn">
+            <span class="box-label">Careful</span>
+            <p>
+              <span class="mono">P</span> multiplies on the <em>left</em>, so it permutes <em>rows</em>. When you
+              use the factorization to solve <span class="mono">Ax = b</span>, the right-hand side must be permuted
+              the same way: <span class="mono">LDUx = Pb</span>, not <span class="mono">b</span>. Forgetting this is
+              the single most common error when implementing pivoted elimination.
+            </p>
+          </div>
+
+          <p>
+            Since <span class="var">P</span> is a product of <span class="var">s</span> row swaps,
+            <span class="mono">det P = (−1)<sup>s</sup></span>, and taking determinants of
+            <span class="mono">PA = LDU</span> gives a formula the calculator uses:
+          </p>
+          <div class="eq">
+            det <em>A</em> = (−1)<sup><em>s</em></sup> · <em>d</em><sub>1</sub><em>d</em><sub>2</sub>⋯<em>d</em><sub><em>n</em></sub>
+          </div>
+
+          <!-- ================= 6 ================= -->
+          <h2 id="symmetric">The symmetric case: A = LDLᵀ</h2>
+          <p>
+            Symmetry cuts the work in half, and uniqueness is what proves it.
+          </p>
+
+          <div class="box">
+            <span class="box-label">Theorem 4: LDLᵀ</span>
+            <p>
+              If <span class="var">A</span> is symmetric and invertible with all leading principal minors non-zero,
+              then its LDU factorization satisfies <span class="mono">U = Lᵀ</span>, so
+            </p>
+            <div class="eq" style="margin:14px 0">
+              <em>A</em> = <em>L</em> <em>D</em> <em>L</em><sup>ᵀ</sup>.
+            </div>
+          </div>
+
+          <div class="box box-proof">
+            <span class="box-label">Proof</span>
+            <p>
+              Write <span class="mono">A = LDU</span>. Transposing,
+              <span class="mono">Aᵀ = Uᵀ Dᵀ Lᵀ = Uᵀ D Lᵀ</span>, because a diagonal matrix is its own transpose.
+              Now <span class="mono">Uᵀ</span> is unit <em>lower</em> triangular and
+              <span class="mono">Lᵀ</span> is unit <em>upper</em> triangular, so this is also a non-singular LDU
+              factorization, of <span class="mono">Aᵀ</span>. But <span class="mono">A = Aᵀ</span>, so both are
+              factorizations of the same matrix, and Theorem 2 forces them to coincide:
+              <span class="mono">L = Uᵀ</span>, hence <span class="mono">U = Lᵀ</span>.
+            </p>
+          </div>
+
+          <div id="ldlt-demo"></div>
+
+          <h3 id="definiteness">Positive definiteness and Cholesky</h3>
+          <p>
+            For symmetric matrices the pivots carry a further meaning.
+          </p>
+
+          <div class="box">
+            <span class="box-label">Theorem 5: Sylvester's criterion</span>
+            <p>
+              A symmetric matrix <span class="var">A</span> is <strong>positive definite</strong>, meaning
+              <span class="mono">xᵀAx &gt; 0</span> for every non-zero <span class="var">x</span>, if and only if
+              every leading principal minor is positive, equivalently if and only if every pivot
+              <span class="mono">d<sub>k</sub></span> in its LDLᵀ factorization is positive.
+            </p>
+          </div>
+
+          <p>
+            The equivalence of the two forms is immediate from
+            <span class="mono">D<sub>k</sub> = d<sub>1</sub>⋯d<sub>k</sub></span>: all the minors are positive
+            exactly when all the pivots are. And when they are positive, each has a real square root, so
+            <span class="var">D</span> = <span class="var">D</span><sup>1/2</sup><span class="var">D</span><sup>1/2</sup> and
+          </p>
+          <div class="eq">
+            <em>A</em> = <em>L</em><em>D</em><em>L</em><sup>ᵀ</sup>
+            = (<em>L</em><em>D</em><sup>1/2</sup>)(<em>L</em><em>D</em><sup>1/2</sup>)<sup>ᵀ</sup>
+            = <em>R</em><em>R</em><sup>ᵀ</sup>,
+          </div>
+          <p>
+            which is the <strong>Cholesky factorization</strong>. So Cholesky is not a separate algorithm so much as
+            LDLᵀ with the diagonal absorbed, and LDLᵀ has the advantage of needing no square roots at all, which
+            is why it is preferred when the matrix might be indefinite.
+          </p>
+
+          <!-- ================= 7 ================= -->
+          <h2 id="family">The family of factorizations</h2>
+          <p>Where LDU sits among its relatives:</p>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Factorization</th><th>Form</th><th>Requires</th><th>Cost</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>LU</strong></td>
+                  <td><span class="mono">A = LÛ</span></td>
+                  <td>minors <span class="mono">D<sub>1</sub>…D<sub>n−1</sub> ≠ 0</span></td>
+                  <td><span class="mono">~n³/3</span></td>
+                </tr>
+                <tr>
+                  <td><strong>LDU</strong></td>
+                  <td><span class="mono">A = LDU</span></td>
+                  <td>same, plus <span class="mono">det A ≠ 0</span> for invertible D</td>
+                  <td><span class="mono">~n³/3</span></td>
+                </tr>
+                <tr>
+                  <td><strong>PLU / PLDU</strong></td>
+                  <td><span class="mono">PA = LDU</span></td>
+                  <td>only that <span class="var">A</span> is invertible</td>
+                  <td><span class="mono">~n³/3</span></td>
+                </tr>
+                <tr>
+                  <td><strong>LDLᵀ</strong></td>
+                  <td><span class="mono">A = LDLᵀ</span></td>
+                  <td>symmetric, minors non-zero</td>
+                  <td><span class="mono">~n³/6</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Cholesky</strong></td>
+                  <td><span class="mono">A = RRᵀ</span></td>
+                  <td>symmetric <em>positive definite</em></td>
+                  <td><span class="mono">~n³/6</span></td>
+                </tr>
+                <tr>
+                  <td><strong>QR</strong></td>
+                  <td><span class="mono">A = QR</span></td>
+                  <td>nothing, always exists</td>
+                  <td><span class="mono">~2n³/3</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-sm text-mute">
+            Costs count multiply&ndash;add pairs for the leading term only. QR is twice the work but needs no
+            pivoting for stability, which is the usual trade.
+          </p>
+
+          <!-- ================= 8 ================= -->
+          <h2 id="summary">Summary</h2>
+          <ul>
+            <li>
+              <strong>LDU</strong> writes <span class="var">A</span> as unit-lower × diagonal × unit-upper.
+              The unit diagonals are what make it canonical.
+            </li>
+            <li>
+              It exists with invertible <span class="var">D</span> <strong>exactly when every leading principal
+              minor is non-zero</strong>, and then the pivots are ratios of consecutive minors.
+            </li>
+            <li>
+              When it exists, it is <strong>unique</strong>. Invertibility of <span class="var">D</span> is what
+              makes the cancellation in the proof legal, so singular factorizations lose uniqueness.
+            </li>
+            <li>
+              A zero pivot is repaired by a <strong>row permutation</strong>:
+              <span class="mono">PA = LDU</span> exists for every invertible matrix.
+            </li>
+            <li>
+              Some singular matrices have <strong>no LDU factorization at all</strong>: a zero pivot next to a
+              non-empty row cannot be reconciled.
+            </li>
+            <li>
+              For symmetric <span class="var">A</span>, uniqueness forces <span class="mono">U = Lᵀ</span>;
+              positive pivots then mean positive definite, and Cholesky follows.
+            </li>
+          </ul>
+
+          <div class="alert alert-info" style="margin-top:28px">
+            <span data-icon="arrowRight"></span>
+            <div>
+              <span class="alert-title">Next: how the factors are actually computed</span>
+              <p>
+                The theory says when the factors exist. The
+                <a class="link" href="algorithm.html">Algorithm page</a> derives them from Gaussian elimination,
+                step by step, and turns the derivation into pseudocode.
+              </p>
+            </div>
+          </div>
+
+        </article>
+
+        <nav class="toc" id="toc-host" aria-label="On this page"></nav>
+      </div>
+
+      <div id="pagenav-host"></div>
+    </div>
+  </main>
+
+  <div id="footer-host"></div>
+
+  <script src="js/fraction.js"></script>
+  <script src="js/matrix.js"></script>
+  <script src="js/ldu.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/examples-data.js"></script>
+  <script src="js/theory.js"></script>
+</body>
+
+</html>

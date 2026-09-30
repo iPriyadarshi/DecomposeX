@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found | DecomposeX</title>
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="light dark">
+
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317527d'/%3E%3Cg fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.5 6H7.5v20h5'/%3E%3Cpath d='M19.5 6h5v20h-5'/%3E%3Cpath d='M12.4 24.2L19.6 7.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/css/main.css">
+
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('decomposex:theme'); } catch (e) { }
+      if (t !== 'dark' && t !== 'light') {
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+
+<body data-page="home">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/index.html" aria-label="DecomposeX home">
+        <span class="brand-mark" id="mark"></span>
+        <span>Decompose<span class="brand-x">X</span></span>
+      </a>
+      <span class="spacer"></span>
+      <a class="btn btn-sm" href="/calculator.html">Calculator</a>
+    </div>
+  </nav>
+
+  <main id="main">
+    <div class="wrap wrap-narrow">
+      <section class="card text-center" style="padding:56px 24px;margin-top:40px">
+        <div class="eyebrow">404</div>
+        <h1 style="font-size:clamp(1.6rem,1.1rem+1.6vw,2.2rem)">That page does not exist</h1>
+        <p class="lead" style="max-width:48ch;margin:16px auto 0">
+          The link may be out of date, or the address may have a typo in it.
+          Everything on the site is reachable from the pages below.
+        </p>
+
+        <div class="hero-cta" style="margin-top:32px">
+          <a class="btn btn-lg" href="/index.html">Go to the home page</a>
+          <a class="btn btn-lg btn-ghost" href="/calculator.html">Open the calculator</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2 style="font-size:1.3rem">All pages</h2>
+        </div>
+        <div class="grid grid-3">
+          <a class="card card-sm card-hover" href="/theory.html">
+            <h3 style="font-size:1rem">Theory</h3>
+            <p class="text-sm" style="margin-top:6px">What L, D and U are, and when they exist.</p>
+          </a>
+          <a class="card card-sm card-hover" href="/algorithm.html">
+            <h3 style="font-size:1rem">The Algorithm</h3>
+            <p class="text-sm" style="margin-top:6px">Deriving the method from Gaussian elimination.</p>
+          </a>
+          <a class="card card-sm card-hover" href="/calculator.html">
+            <h3 style="font-size:1rem">Calculator</h3>
+            <p class="text-sm" style="margin-top:6px">Factor any matrix, exactly, step by step.</p>
+          </a>
+          <a class="card card-sm card-hover" href="/examples.html">
+            <h3 style="font-size:1rem">Worked Examples</h3>
+            <p class="text-sm" style="margin-top:6px">Every case, solved and explained.</p>
+          </a>
+          <a class="card card-sm card-hover" href="/applications.html">
+            <h3 style="font-size:1rem">Applications</h3>
+            <p class="text-sm" style="margin-top:6px">Solving systems, determinants, inverses.</p>
+          </a>
+          <a class="card card-sm card-hover" href="/practice.html">
+            <h3 style="font-size:1rem">Practice</h3>
+            <p class="text-sm" style="margin-top:6px">Test yourself on generated questions.</p>
+          </a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="row row-between">
+        <a class="brand" href="/index.html">
+          <span class="brand-mark" id="mark2"></span>
+          <span>Decompose<span class="brand-x">X</span></span>
+        </a>
+        <a class="link" href="/about.html">About this project</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/site.js"></script>
+  <script>
+    /* The shared chrome is not injected here: this page is deliberately
+       standalone so it renders even if a script fails. Only the brand mark
+       is drawn from the icon library. */
+    (function () {
+      if (!window.Site) return;
+      ['mark', 'mark2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.appendChild(Site.icon(Site.ICONS.brand));
+      });
+    })();
+  </script>
+</body>
+
+</html>

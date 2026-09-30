@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Served at the requested URL, so it should not be indexed on its own.
+Disallow: /404.html
+
+Sitemap: https://decomposex.priyadarshi.top/sitemap.xml

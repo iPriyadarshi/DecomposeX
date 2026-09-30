@@ -1,46 +1,78 @@
 # DecomposeX
-## LDU Factorization of an n*n Matrix
-### Overview
-This project provides a web-based tool to perform LDU (Lower-Diagonal-Upper) factorization of an n\*n matrix. The application is built using HTML, CSS, and JavaScript, and it allows users to input a matrix, visualize the steps of the factorization process, and see the resulting L, D, and U matrices.
 
-![LDU Factorization](https://github.com/iPriyadarshi/DecomposeX/blob/main/ldu-factorization.png)
+An interactive guide to LDU matrix factorization. It teaches the theory, derives the algorithm, and
+factors matrices **exactly**, using arbitrary-precision fractions instead of floating point.
 
-### Features
-- **Matrix Input**: Dynamically generate a matrix input form based on user-defined matrix size.
+**Live demo: [decomposex.priyadarshi.top](https://decomposex.priyadarshi.top)**
 
-- **Detailed Steps**: Display each step of the LDU factorization process.
+## Key features
 
-- **Result Visualization**: Show the resulting L, D, and U matrices after factorization.
+- **Exact arithmetic.** Every value is a fraction of arbitrary-precision integers, so a pivot that is
+  mathematically zero tests as exactly zero, and `1/3` stays `1/3`.
+- **Handles the cases that break naive implementations.** Detects zero pivots, swaps rows and reports
+  `P·A = L·D·U`, and explains clearly when no factorization exists instead of returning `NaN`.
+- **Shows its working.** Every elimination stage, multiplier and row operation, in two phases.
+- **Self-verifying.** Multiplies the factors back and compares against `A` entry by entry.
+- **Full diagnostics.** Determinant, rank, leading principal minors, symmetry, definiteness, Cholesky.
+- **Solves systems.** `A·x = b` by substitution, distinguishing unique, inconsistent and
+  under-determined cases. Also computes the inverse.
+- **8 pages** of theory, worked examples, applications and generated practice questions.
 
-### Installation
-To get started with the project, follow these steps:
+## Tech stack
 
-1. **Clone the repository**:
+Vanilla HTML, CSS and JavaScript.
+
+## Run locally
+
 ```bash
 git clone https://github.com/iPriyadarshi/DecomposeX.git
 cd DecomposeX
 ```
 
-2. **Open `index.html` in a web browser**:
-      
+Then open `index.html`:
+
 ```bash
-open index.html
+start index.html        # Windows
+open index.html         # macOS
+xdg-open index.html     # Linux
 ```
-### Usage
-**1. Matrix Size:** Enter the desired matrix size (n) in the input field.
 
-**2. Generate Matrix:** Click the "Generate Matrix" button to create the input form for the matrix.
+## Project structure
 
-**3. Input Matrix Elements:** Fill in the elements of the matrix.
+```
+*.html            one file per page, plus a 404 page
+css/main.css      design system: tokens, components, light and dark themes
+js/fraction.js    exact rational arithmetic on BigInt
+js/matrix.js      matrix algebra, determinant, rank, parsing
+js/ldu.js         the factorization, solving, inversion  (no DOM access)
+js/render.js      renders matrices and steps to the DOM
+js/site.js        navigation, footer, theme, icon set
+js/<page>.js      the interactive parts of one page
+```
 
-**4. Factorize:** Click the "Factorize" button to perform the LDU factorization. The detailed steps and results will be displayed below.
+## Technical decisions
 
-### Project Structure
-- [index.html](index.html): The main HTML file that contains the structure of the web application.
+**Exact fractions instead of floats.** Elimination subtracts nearly equal numbers, which destroys
+precision. A pivot that should be zero typically comes out as `4.9e-17`, so the test for a zero pivot
+silently fails and the algorithm divides by almost nothing. Storing every value as a reduced
+`BigInt` ratio makes that test reliable, and means a singular matrix reports `det = 0` rather than
+`1.9e-16`.
 
-- [style.css](style.css): The CSS file for styling the web application.
+**Two-phase factorization.** Gaussian elimination produces `P·A = L·Û` first; `Û` is then split into
+`D` and `U` by dividing each row by its own pivot. Separating the phases is what makes the failure
+cases explainable: a zero pivot next to a non-empty row is exactly where LDU stops existing, while
+`LU` still does.
 
-- [script.js](script.js): The JavaScript file that contains the logic for LDU factorization and user interactions.
+**Truncated decimals, not rounded.** Displayed decimals truncate with a trailing `…` so every digit
+shown is a true digit. Rounding would print `9999/10000` as `1` at three places, which reads as an
+exact value it is not. Exports round properly instead, since a `…` would not paste anywhere useful.
 
-### Contributing
-Feel free to open issues or submit pull requests. Contributions are always welcome!
+## Documentation
+
+The site documents itself: [`theory.html`](theory.html) covers the mathematics with proofs,
+[`algorithm.html`](algorithm.html) has the pseudocode and complexity, and
+[`about.html`](about.html) explains how the project is built.
+
+## License
+
+[MIT](LICENSE)
